@@ -52,8 +52,8 @@ Unlike Core BE and Core BE WS, there is no `CORE_FE_CONFIG_PATH` secret, this se
 ## Deploy flow
 
 1. Open a pull request into `main`. `ci.yml` must pass (build, lint, `run-tests.sh`, Docker build check).
-2. Once `main` is green and ready to ship, open a pull request from `main` into `main-stable` and approve it.
-3. Merging into `main-stable` triggers `cd.yml`, which connects over SSH and:
+2. Once `main` is green and ready to ship, promote it into `main-stable`, either by merging a pull request from `main` into `main-stable`, or by pushing directly to `main-stable`.
+3. Any push to `main-stable` triggers `cd.yml` (a PR merge is itself a push under the hood, so both paths use the same trigger), which connects over SSH and:
    - checks that `PROXY_CONF_D_PATH` (the shared reverse proxy's `conf.d` folder) exists, and fails the deploy immediately if it does not
    - pulls the latest `main-stable`
    - builds the image with `--build-arg GIT_SHA=$(git rev-parse --short HEAD)`, `--build-arg VITE_API_BASE_URL` from `CORE_FE_ENV_API_BASE_URL`, and `--build-arg VITE_WS_BASE_URL` from `CORE_FE_ENV_WS_BASE_URL`
