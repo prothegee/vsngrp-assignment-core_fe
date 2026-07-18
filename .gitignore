@@ -30,6 +30,15 @@ zig-out
 zig-pkg
 
 ##
+## node
+##
+dist
+coverage
+playwright-report
+test-results
+.vite
+
+##
 ## extension
 ##
 *.bak*
@@ -41,6 +50,7 @@ zig-pkg
 ## file: include
 ##
 common_check.*
+.env
 
 ##
 ## file: exclude
