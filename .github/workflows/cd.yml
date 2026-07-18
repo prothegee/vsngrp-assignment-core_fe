@@ -1,0 +1,59 @@
+name: cd
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main-stable
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: deploy over ssh
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_SSH_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            if [ ! -d "${{ secrets.PROXY_CONF_D_PATH }}" ]; then
+              echo "deploy: ERROR, ${{ secrets.PROXY_CONF_D_PATH }} does not exist, provision the reverse proxy before deploying this service"
+              exit 1
+            fi
+
+            cd ${{ secrets.CORE_FE_DEPLOY_PATH }}
+            git fetch origin main-stable
+            git checkout main-stable
+            git reset --hard origin/main-stable
+            docker build \
+              --build-arg GIT_SHA=$(git rev-parse --short HEAD) \
+              --build-arg VITE_API_BASE_URL=${{ secrets.CORE_FE_ENV_API_BASE_URL }} \
+              --build-arg VITE_WS_BASE_URL=${{ secrets.CORE_FE_ENV_WS_BASE_URL }} \
+              -t vsngrp-core-fe:latest .
+            docker stop vsngrp-core-fe-app || true
+            docker rm vsngrp-core-fe-app || true
+            docker run -d --name vsngrp-core-fe-app \
+              -p 127.0.0.1:9003:9003 \
+              --restart unless-stopped \
+              vsngrp-core-fe:latest
+
+            cp nginx/vsngrp-fec.conf "${{ secrets.PROXY_CONF_D_PATH }}/vsngrp-fec.conf"
+            docker exec vsngrp-reverse-proxy nginx -s reload
+
+      - name: verify deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_SSH_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.CORE_FE_DEPLOY_PATH }}
+            ./verify-deploy.sh
