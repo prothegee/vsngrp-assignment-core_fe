@@ -24,10 +24,14 @@ jobs:
 
       - name: deploy over ssh
         uses: appleboy/ssh-action@v1
+        env:
+          CORE_FE_ENV_API_BASE_URL: ${{ secrets.CORE_FE_ENV_API_BASE_URL }}
+          CORE_FE_ENV_WS_BASE_URL: ${{ secrets.CORE_FE_ENV_WS_BASE_URL }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_SSH_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: CORE_FE_ENV_API_BASE_URL,CORE_FE_ENV_WS_BASE_URL
           script: |
             set -euo pipefail
             if [ ! -d "${{ secrets.PROXY_CONF_D_PATH }}" ]; then
@@ -45,11 +49,17 @@ jobs:
             git fetch origin main-stable
             git checkout main-stable
             git reset --hard origin/main-stable
-            docker build \
-              --build-arg GIT_SHA=$(git rev-parse --short HEAD) \
-              --build-arg VITE_API_BASE_URL=${{ secrets.CORE_FE_ENV_API_BASE_URL }} \
-              --build-arg VITE_WS_BASE_URL=${{ secrets.CORE_FE_ENV_WS_BASE_URL }} \
-              -t vsngrp-core-fe:latest .
+
+            cp .env.template .env
+            sed -i "s|VITE_API_BASE_URL=CHANGE_THIS|VITE_API_BASE_URL=$CORE_FE_ENV_API_BASE_URL|" .env
+            sed -i "s|VITE_WS_BASE_URL=CHANGE_THIS|VITE_WS_BASE_URL=$CORE_FE_ENV_WS_BASE_URL|" .env
+
+            if grep -q CHANGE_THIS .env; then
+              echo "deploy: ERROR, .env still has CHANGE_THIS placeholders after seeding, check the CORE_FE_ENV_* secrets"
+              exit 1
+            fi
+
+            docker build --build-arg GIT_SHA=$(git rev-parse --short HEAD) -t vsngrp-core-fe:latest .
             docker stop vsngrp-core-fe-app || true
             docker rm vsngrp-core-fe-app || true
             docker run -d --name vsngrp-core-fe-app \
