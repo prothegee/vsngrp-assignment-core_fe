@@ -1,5 +1,8 @@
 # Core FE
 
+[![ci](https://github.com/prothegee/vsngrp-assignment-core_fe/actions/workflows/ci.yml/badge.svg)](https://github.com/prothegee/vsngrp-assignment-core_fe/actions/workflows/ci.yml)
+[![cd](https://github.com/prothegee/vsngrp-assignment-core_fe/actions/workflows/cd.yml/badge.svg)](https://github.com/prothegee/vsngrp-assignment-core_fe/actions/workflows/cd.yml)
+
 Core FE is the browser client for the chat-bot product. It renders sign up, sign in, sign out, and the chat itself, and talks to Core BE over REST for accounts and to Core BE WS over a WebSocket for the chat.
 
 <br>
